@@ -12,11 +12,11 @@ const LISTEN_ENDPOINT = 'https://graphql-listen.datocms.com/';
  * @type {import('@nuxt/types').Plugin}
  */
 export default ({ app }, inject) => {
-  let unsubscribes = [];
+  let unsubscribes = {};
 
   app.router.afterEach(() => {
-    unsubscribes.forEach(unsubscribe => unsubscribe());
-    unsubscribes = [];
+    Object.values(unsubscribes).forEach(unsubscribe => unsubscribe());
+    unsubscribes = {};
   });
 
   // This store is explicitly used for dato previews.
@@ -86,7 +86,7 @@ export default ({ app }, inject) => {
       // app.context.$preview is the preview data.
       // It's an object in preview mode, and undefined when not in preview mode.
       if (!app.context.$preview) {
-        return;
+        return () => {};
       }
 
       const unsubscribe = await subscribeToQuery({
@@ -106,12 +106,12 @@ export default ({ app }, inject) => {
         },
       });
 
-      unsubscribes.push(unsubscribe);
+      const unsubscribeKey = `${query}.${JSON.stringify(variables)}`
+      unsubscribes[unsubscribeKey] = unsubscribe;
 
       return () => {
         unsubscribe();
-        unsubscribes.filter(item => item !== unsubscribe);
-        debugger
+        delete unsubscribes[unsubscribeKey];
       }
     },
   });
