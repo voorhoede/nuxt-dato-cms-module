@@ -19,4 +19,11 @@ export default function (moduleOptions) {
       previewSecret: options.previewSecret
     },
   });
+
+  this.addPlugin({
+    src: path.resolve(__dirname, 'plugins/dato.js'),
+    options: {
+      datoReadOnlyToken: options.datoReadOnlyToken
+    },
+  });
 }
