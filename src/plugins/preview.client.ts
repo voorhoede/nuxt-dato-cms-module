@@ -1,5 +1,11 @@
 const STORAGE_KEY = 'nuxt-datocms-preview-data';
 
+// Extend window, to have onNuxtReady method defined
+interface NuxtWindow extends Window {
+  onNuxtReady(obj: object): void
+}
+declare let window: NuxtWindow;
+
 /**
  * @type {import('@nuxt/types').Plugin}
  */
@@ -19,7 +25,7 @@ export default function (
   // @see https://mathiasbynens.be/notes/localstorage-pattern
   const storage = (() => {
     // eslint-disable-next-line new-parens
-    const uid = new Date;
+    const uid = new Date().toJSON();
     let storage;
     let result;
 
@@ -29,7 +35,9 @@ export default function (
       result = storage.getItem(uid) == uid;
       storage.removeItem(uid);
       return result && storage;
-    } catch (exception) { }
+    } catch (exception) {
+      return null;
+    }
   })();
 
   inject('nuxtDatoCms', {
@@ -37,14 +45,15 @@ export default function (
     exit: exitPreview,
   });
 
-  if (storage && storage.getItem(STORAGE_KEY)) {
+  if (storage?.getItem(STORAGE_KEY)) {
     const data = JSON.parse(storage.getItem(STORAGE_KEY));
 
     if (preview || previewSecret) {
       removePreviewQueryParams();
     }
 
-    return enterPreview(data);
+    enterPreview(data);
+    return;
   }
 
   if (preview !== 'true') {
@@ -54,24 +63,24 @@ export default function (
 
   // lodash templating of plugin options passed by module.
   if (previewSecret !== '<%= options.previewSecret %>') {
-    return onReady(() => error({
+    onReady(() => error({
       statusCode: 401,
       message: 'Invalid secret.',
     }));
+    return;
   }
 
   enterPreview();
+  onReady(removePreviewQueryParams);
 
-  return onReady(removePreviewQueryParams);
-
-  function enterPreview (data = {}) {
+  function enterPreview(data = {}) {
     if (storage) {
       storage.setItem(STORAGE_KEY, JSON.stringify(data));
     }
     enablePreview(data);
   }
 
-  function exitPreview () {
+  function exitPreview() {
     if (storage) {
       storage.removeItem(STORAGE_KEY);
     }
@@ -81,7 +90,7 @@ export default function (
   function removePreviewQueryParams() {
     const routeWithoutPreviewQueryParams = {
       ...route,
-      query: otherQueryParams
+      query: otherQueryParams,
     };
     redirect(routeWithoutPreviewQueryParams);
   }
@@ -90,5 +99,5 @@ export default function (
   // @see https://github.com/nuxt/nuxt.js/issues/4491#issuecomment-648979464
   function onReady(fn) {
     window.onNuxtReady(() => fn());
-  };
+  }
 }

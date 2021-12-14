@@ -1,21 +1,27 @@
 import { subscribeToQuery } from 'datocms-listen';
 import Vue from 'vue';
-import Vuex, { Store } from 'vuex';
 import fetch from 'node-fetch';
-
-Vue.use(Vuex);
 
 const PUBLISHED_ENDPOINT = 'https://graphql.datocms.com/';
 const LISTEN_ENDPOINT = 'https://graphql-listen.datocms.com/';
+
+const vm = new Vue({
+  data: {
+    error: null,
+    status: 'connecting',
+  },
+});
+
+type Unsubscribes = { [key: string]: Function }
 
 /**
  * @type {import('@nuxt/types').Plugin}
  */
 export default ({ app }, inject) => {
-  let unsubscribes = {};
+  let unsubscribes: Unsubscribes = {};
 
   app.router.afterEach(() => {
-    Object.values(unsubscribes).forEach(unsubscribe => unsubscribe());
+    Object.values(unsubscribes).forEach((unsubscribe) => unsubscribe());
     unsubscribes = {};
   });
 
@@ -24,57 +30,39 @@ export default ({ app }, inject) => {
   // The state shouldn't be mutated from outside this plugin,
   // so that's why I'm using a local store here,
   // instead of adding a separate store module.
-  const localStore = new Store({
-    state: {
-      error: null,
-      status: 'connecting'
-    },
-    mutations: {
-      setError(state, { error }) {
-        state.error = error;
-        return state;
-      },
-      setStatus(state, { status }) {
-        state.status = status;
-        return state;
-      },
-    },
-  });
 
   return inject('dato', {
-    state: localStore.state,
+    state: vm,
+
     /**
      * Query published endpoint
      * @param {{ query: string, variables: object }}
      * @returns {promise<object>} query response
      */
     async query({ query, variables = {} }) {
-      try {
-        const response = await fetch(PUBLISHED_ENDPOINT, {
-          method: 'POST',
-          body: JSON.stringify({ query, variables }),
-          headers: {
-            'Content-Type': 'application/json',
-            'Accept': 'application/json',
-            'Authorization': 'Bearer <%= options.datoReadOnlyToken %>',
-          },
-        });
+      const response = await fetch(PUBLISHED_ENDPOINT, {
+        method: 'POST',
+        body: JSON.stringify({ query, variables }),
+        headers: {
+          'Content-Type': 'application/json',
+          Accept: 'application/json',
+          Authorization: 'Bearer <%= options.datoReadOnlyToken %>',
+        },
+      });
 
-        const body = await response.json();
+      const body = await response.json() as { data?: object, errors?: object[] };
 
-        if (body?.errors) {
-          throw body.errors;
-        }
-
-        if (!body?.data) {
-          throw 'Empty response';
-        }
-
-        return body.data;
-      } catch (error) {
-        throw error;
+      if (body?.errors) {
+        throw body.errors;
       }
+
+      if (!body?.data) {
+        throw new Error('Empty response');
+      }
+
+      return body.data;
     },
+
     /**
      * Subscribe to changes on query when in preview mode.
      * `onData` is called with query response data on changes.
@@ -95,24 +83,24 @@ export default ({ app }, inject) => {
         query,
         variables,
         preview: true,
-        onUpdate: update => {
+        onUpdate: (update) => {
           onData(update.response.data);
         },
         onStatusChange(status) {
-          localStore.commit('setStatus', { status });
+          vm.status = status;
         },
         onChannelError(error) {
-          localStore.commit('setError', { error });
+          vm.error = error;
         },
       });
 
-      const unsubscribeKey = `${query}.${JSON.stringify(variables)}`
+      const unsubscribeKey = `${query}.${JSON.stringify(variables)}`;
       unsubscribes[unsubscribeKey] = unsubscribe;
 
       return () => {
         unsubscribe();
         delete unsubscribes[unsubscribeKey];
-      }
+      };
     },
   });
 };

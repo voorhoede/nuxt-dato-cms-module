@@ -1,5 +1,5 @@
 {
-  "name": "@voorhoede/nuxt-datocms-module",
+  "name": "@voorhoede/nuxt-dato-cms-module",
   "version": "1.0.0",
   "description": "Nuxt module for getting data and subscribing to changes in preview mode",
   "main": "src/index.js",
@@ -21,7 +21,16 @@
   "homepage": "https://github.com/voorhoede/nuxt-dato-cms-module#readme",
   "dependencies": {
     "@nuxt/types": "^2.15.8",
-    "datocms-listen": "^0.1.6",
+    "datocms-listen": "0.1.6",
     "node-fetch": "^3.1.0"
+  },
+  "devDependencies": {
+    "@typescript-eslint/eslint-plugin": "^5.7.0",
+    "@typescript-eslint/parser": "^5.7.0",
+    "eslint": "^8.4.1",
+    "eslint-config-airbnb-base": "^15.0.0",
+    "eslint-plugin-import": "^2.25.3",
+    "eslint-plugin-nuxt": "^3.1.0",
+    "eslint-plugin-vue": "^8.2.0"
   }
 }
